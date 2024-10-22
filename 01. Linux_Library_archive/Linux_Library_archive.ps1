@@ -1,32 +1,32 @@
-#¼­¹ö ¸ñ·Ï(IP/ °èÁ¤¸í / ÆĞ½º¿öµå)
+#PS1 ì•ˆì“¸ì‹œ .shë¡œ ì“¸ ëª…ë ¹ì–´
+#tar -cvpzf /tmp/Linux_$(hostname -I | awk '{print $1}').tar.gz /lib /lib64 /bin /sbin /var /usr /etc /boot /opt --exclude=/var/log --exclude=/var/cache --exclude=/var/tmp 
+
+#ì„œë²„ ëª©ë¡(IP/ ê³„ì •ëª… / íŒ¨ìŠ¤ì›Œë“œ)
 $servers = @(
  #   @{ ip = "192.168.1.1"; username = "root"; password = '1'}, 
     @{ ip = "172.18.62.212"; username = "root"; password = '1'}
 )
 
-#SSH ¸í·É¾î
+#SSH ëª…ë ¹ì–´
 $command = @"
     tar -cvpzf /tmp/Linux_Scan_Result.tar.gz /lib /lib64 /bin /sbin /var /usr /etc /boot /opt --exclude=/var/log --exclude=/var/cache --exclude=/var/tmp 
 "@
 
-#PS1 ¾È¾µ½Ã .sh·Î ¾µ ¸í·É¾î
-#tar -cvpzf /tmp/Linux_$(hostname -I | awk '{print $1}').tar.gz /lib /lib64 /bin /sbin /var /usr /etc /boot /opt --exclude=/var/log --exclude=/var/cache --exclude=/var/tmp 
-
-#°¢ ¼­¹ö¿¡ ¸í·É¾î Àü¼Û
+#ê° ì„œë²„ì— ëª…ë ¹ì–´ ì „ì†¡
 foreach ($server in $servers) {
     $ip = $server.ip
     $username = $server.username
     $password = $server.password
-    $remoteFilePath = "/tmp/Linux_Scan_Result.tar.gz" #¸®´ª½º ¾ÆÄ«ÀÌºê ÆÄÀÏ °æ·Î
+    $remoteFilePath = "/tmp/Linux_Scan_Result.tar.gz" #ë¦¬ëˆ…ìŠ¤ ì•„ì¹´ì´ë¸Œ íŒŒì¼ ê²½ë¡œ
     $LocalFilePath = ".\Linux_Result_${ip}.tar.gz"
 
-    #Plink¸¦ ÀÌ¿ëÇÑ ¾ÆÄ«ÀÌºê ½ÇÇà
+    #Plinkë¥¼ ì´ìš©í•œ ì•„ì¹´ì´ë¸Œ ì‹¤í–‰
     & .\plink.exe -ssh -batch $username@$ip -pw $password $command
-    #PSCP¸¦ ÀÌ¿ëÇÑ °á°úÆÄÀÏ º¹»ç
+    #PSCPë¥¼ ì´ìš©í•œ ê²°ê³¼íŒŒì¼ ë³µì‚¬
     & .\pscp.exe -pw $password "$username@${ip}:${remoteFilePath}" $LocalFilePath
-    #Plink¸¦ ÀÌ¿ëÇÏ¿© °á°úÆÄÀÏ Á¦°Å (rm -rf ºÒ°¡ÇÑ °÷À» À§ÇÑ echo y »ç¿ë)
+    #Plinkë¥¼ ì´ìš©í•˜ì—¬ ê²°ê³¼íŒŒì¼ ì œê±° (rm -rf ë¶ˆê°€í•œ ê³³ì„ ìœ„í•œ echo y ì‚¬ìš©)
     & .\plink.exe -ssh -batch $username@$ip -pw $password "echo y | rm ${remoteFilePath}"
 
-    #¼º°ø ¸Ş½ÃÁö Ãâ·Â
+    #ì„±ê³µ ë©”ì‹œì§€ ì¶œë ¥
     Write-Host "Command sent complete to $ip"
 }
