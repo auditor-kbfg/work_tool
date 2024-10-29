@@ -1,1 +1,1 @@
-.\program\python311\python.exe 00.Windows_Forensic.py
+.\program\Python311\python.exe 00.Window_Forensic.py
