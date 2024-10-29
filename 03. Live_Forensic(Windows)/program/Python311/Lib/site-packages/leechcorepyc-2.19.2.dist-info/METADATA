@@ -1,0 +1,18 @@
+Metadata-Version: 2.1
+Name: leechcorepyc
+Version: 2.19.2
+Summary: LeechCore for Python
+Home-page: https://github.com/ufrisk/LeechCore
+Author: Ulf Frisk
+Author-email: pcileech@frizk.net
+License: Other/Proprietary License
+Platform: win_amd64
+Classifier: Programming Language :: C
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: Other/Proprietary License
+Classifier: Operating System :: Microsoft :: Windows :: Windows 10
+Requires-Python: >=3.6
+
+LeechCore for Python : native extension for physical memory access
+
+

@@ -1,0 +1,97 @@
+from .leechcorepyc import LeechCore
+
+# CONSTANTS AUTO-GENERATED FROM 'leechcore.h' BELOW:
+LC_CONFIG_PRINTF_ENABLED                = 0x01
+LC_CONFIG_PRINTF_V                      = 0x02
+LC_CONFIG_PRINTF_VV                     = 0x04
+LC_CONFIG_PRINTF_VVV                    = 0x08
+LC_OPT_CORE_PRINTF_ENABLE                   = 0x4000000100000000  # RW
+LC_OPT_CORE_VERBOSE                         = 0x4000000200000000  # RW
+LC_OPT_CORE_VERBOSE_EXTRA                   = 0x4000000300000000  # RW
+LC_OPT_CORE_VERBOSE_EXTRA_TLP               = 0x4000000400000000  # RW
+LC_OPT_CORE_VERSION_MAJOR                   = 0x4000000500000000  # R
+LC_OPT_CORE_VERSION_MINOR                   = 0x4000000600000000  # R
+LC_OPT_CORE_VERSION_REVISION                = 0x4000000700000000  # R
+LC_OPT_CORE_ADDR_MAX                        = 0x1000000800000000  # R
+LC_OPT_CORE_STATISTICS_CALL_COUNT           = 0x4000000900000000  # R [lo-dword: LC_STATISTICS_ID_*]
+LC_OPT_CORE_STATISTICS_CALL_TIME            = 0x4000000a00000000  # R [lo-dword: LC_STATISTICS_ID_*]
+LC_OPT_CORE_VOLATILE                        = 0x1000000b00000000  # R
+LC_OPT_CORE_READONLY                        = 0x1000000c00000000  # R
+LC_OPT_MEMORYINFO_VALID                     = 0x0200000100000000  # R
+LC_OPT_MEMORYINFO_FLAG_32BIT                = 0x0200000300000000  # R
+LC_OPT_MEMORYINFO_FLAG_PAE                  = 0x0200000400000000  # R
+LC_OPT_MEMORYINFO_ARCH                      = 0x0200001200000000  # R - LC_ARCH_TP
+LC_OPT_MEMORYINFO_OS_VERSION_MINOR          = 0x0200000500000000  # R
+LC_OPT_MEMORYINFO_OS_VERSION_MAJOR          = 0x0200000600000000  # R
+LC_OPT_MEMORYINFO_OS_DTB                    = 0x0200000700000000  # R
+LC_OPT_MEMORYINFO_OS_PFN                    = 0x0200000800000000  # R
+LC_OPT_MEMORYINFO_OS_PsLoadedModuleList     = 0x0200000900000000  # R
+LC_OPT_MEMORYINFO_OS_PsActiveProcessHead    = 0x0200000a00000000  # R
+LC_OPT_MEMORYINFO_OS_MACHINE_IMAGE_TP       = 0x0200000b00000000  # R
+LC_OPT_MEMORYINFO_OS_NUM_PROCESSORS         = 0x0200000c00000000  # R
+LC_OPT_MEMORYINFO_OS_SYSTEMTIME             = 0x0200000d00000000  # R
+LC_OPT_MEMORYINFO_OS_UPTIME                 = 0x0200000e00000000  # R
+LC_OPT_MEMORYINFO_OS_KERNELBASE             = 0x0200000f00000000  # R
+LC_OPT_MEMORYINFO_OS_KERNELHINT             = 0x0200001000000000  # R
+LC_OPT_MEMORYINFO_OS_KdDebuggerDataBlock    = 0x0200001100000000  # R
+LC_OPT_FPGA_PROBE_MAXPAGES                  = 0x0300000100000000  # RW
+LC_OPT_FPGA_MAX_SIZE_RX                     = 0x0300000300000000  # RW
+LC_OPT_FPGA_MAX_SIZE_TX                     = 0x0300000400000000  # RW
+LC_OPT_FPGA_DELAY_PROBE_READ                = 0x0300000500000000  # RW - uS
+LC_OPT_FPGA_DELAY_PROBE_WRITE               = 0x0300000600000000  # RW - uS
+LC_OPT_FPGA_DELAY_WRITE                     = 0x0300000700000000  # RW - uS
+LC_OPT_FPGA_DELAY_READ                      = 0x0300000800000000  # RW - uS
+LC_OPT_FPGA_RETRY_ON_ERROR                  = 0x0300000900000000  # RW
+LC_OPT_FPGA_DEVICE_ID                       = 0x0300008000000000  # RW - bus:dev:fn (ex: 04:00.0 == 0x0400).
+LC_OPT_FPGA_FPGA_ID                         = 0x0300008100000000  # R
+LC_OPT_FPGA_VERSION_MAJOR                   = 0x0300008200000000  # R
+LC_OPT_FPGA_VERSION_MINOR                   = 0x0300008300000000  # R
+LC_OPT_FPGA_ALGO_TINY                       = 0x0300008400000000  # RW - 1/0 use tiny 128-byte/tlp read algorithm.
+LC_OPT_FPGA_ALGO_SYNCHRONOUS                = 0x0300008500000000  # RW - 1/0 use synchronous (old) read algorithm.
+LC_OPT_FPGA_CFGSPACE_XILINX                 = 0x0300008600000000  # RW - [lo-dword: register address in bytes] [bytes: 0-3: data, 4-7: byte_enable(if wr/set); top bit = cfg_mgmt_wr_rw1c_as_rw]
+LC_OPT_FPGA_TLP_READ_CB_WITHINFO            = 0x0300009000000000  # RW - 1/0 call TLP read callback with additional string info in szInfo
+LC_OPT_FPGA_TLP_READ_CB_FILTERCPL           = 0x0300009100000000  # RW - 1/0 call TLP read callback with memory read completions from read calls filtered
+LC_CMD_FPGA_PCIECFGSPACE                    = 0x0000010300000000  # R
+LC_CMD_FPGA_CFGREGPCIE                      = 0x0000010400000000  # RW - [lo-dword: register address]
+LC_CMD_FPGA_CFGREGCFG                       = 0x0000010500000000  # RW - [lo-dword: register address]
+LC_CMD_FPGA_CFGREGDRP                       = 0x0000010600000000  # RW - [lo-dword: register address]
+LC_CMD_FPGA_CFGREGCFG_MARKWR                = 0x0000010700000000  # W  - write with mask [lo-dword: register address] [bytes: 0-1: data, 2-3: mask]
+LC_CMD_FPGA_CFGREGPCIE_MARKWR               = 0x0000010800000000  # W  - write with mask [lo-dword: register address] [bytes: 0-1: data, 2-3: mask]
+LC_CMD_FPGA_CFGREG_DEBUGPRINT               = 0x0000010a00000000  # N/A
+LC_CMD_FPGA_PROBE                           = 0x0000010b00000000  # RW
+LC_CMD_FPGA_CFGSPACE_SHADOW_RD              = 0x0000010c00000000  # R
+LC_CMD_FPGA_CFGSPACE_SHADOW_WR              = 0x0000010d00000000  # W  - [lo-dword: config space write base address]
+LC_CMD_FPGA_TLP_WRITE_SINGLE                = 0x0000011000000000  # W  - write single tlp BYTE:s
+LC_CMD_FPGA_TLP_WRITE_MULTIPLE              = 0x0000011100000000  # W  - write multiple LC_TLP:s
+LC_CMD_FPGA_TLP_TOSTRING                    = 0x0000011200000000  # RW - convert single TLP to LPSTR; *pcbDataOut includes NULL terminator.
+LC_CMD_FPGA_TLP_CONTEXT                     = 0x2000011400000000  # W - set/unset TLP user-defined context to be passed to callback function. (pbDataIn == LPVOID user context). [not remote].
+LC_CMD_FPGA_TLP_CONTEXT_RD                  = 0x2000011b00000000  # R - get TLP user-defined context to be passed to callback function. [not remote].
+LC_CMD_FPGA_TLP_FUNCTION_CALLBACK           = 0x2000011500000000  # W - set/unset TLP callback function (pbDataIn == PLC_TLP_CALLBACK). [not remote].
+LC_CMD_FPGA_BAR_CONTEXT                     = 0x2000012000000000  # W - set/unset BAR user-defined context to be passed to callback function. (pbDataIn == LPVOID user context). [not remote].
+LC_CMD_FPGA_BAR_CONTEXT_RD                  = 0x2000012100000000  # R - get BAR user-defined context to be passed to callback function. [not remote].
+LC_CMD_FPGA_BAR_FUNCTION_CALLBACK           = 0x2000012200000000  # W - set/unset BAR callback function (pbDataIn == PLC_BAR_CALLBACK). [not remote].
+LC_CMD_FPGA_BAR_INFO                        = 0x0000012400000000  # R - get BAR info (pbDataOut == LC_BAR_INFO[6]).
+LC_CMD_FILE_DUMPHEADER_GET                  = 0x0000020100000000  # R
+LC_CMD_STATISTICS_GET                       = 0x4000010000000000  # R
+LC_CMD_MEMMAP_GET                           = 0x4000020000000000  # R  - MEMMAP as LPSTR
+LC_CMD_MEMMAP_SET                           = 0x4000030000000000  # W  - MEMMAP as LPSTR
+LC_CMD_MEMMAP_GET_STRUCT                    = 0x4000040000000000  # R  - MEMMAP as LC_MEMMAP_ENTRY[]
+LC_CMD_MEMMAP_SET_STRUCT                    = 0x4000050000000000  # W  - MEMMAP as LC_MEMMAP_ENTRY[]
+LC_CMD_AGENT_EXEC_PYTHON                    = 0x8000000100000000  # RW - [lo-dword: optional timeout in ms]
+LC_CMD_AGENT_EXIT_PROCESS                   = 0x8000000200000000  #    - [lo-dword: process exit code]
+LC_CMD_AGENT_VFS_LIST                       = 0x8000000300000000  # RW
+LC_CMD_AGENT_VFS_READ                       = 0x8000000400000000  # RW
+LC_CMD_AGENT_VFS_WRITE                      = 0x8000000500000000  # RW
+LC_CMD_AGENT_VFS_OPT_GET                    = 0x8000000600000000  # RW
+LC_CMD_AGENT_VFS_OPT_SET                    = 0x8000000700000000  # RW
+LC_CMD_AGENT_VFS_INITIALIZE                 = 0x8000000800000000  # RW
+LC_CMD_AGENT_VFS_CONSOLE                    = 0x8000000900000000  # RW
+LC_STATISTICS_ID_OPEN                       = 0x00
+LC_STATISTICS_ID_READ                       = 0x01
+LC_STATISTICS_ID_READSCATTER                = 0x02
+LC_STATISTICS_ID_WRITE                      = 0x03
+LC_STATISTICS_ID_WRITESCATTER               = 0x04
+LC_STATISTICS_ID_GETOPTION                  = 0x05
+LC_STATISTICS_ID_SETOPTION                  = 0x06
+LC_STATISTICS_ID_COMMAND                    = 0x07
+LC_STATISTICS_ID_MAX                        = 0x07

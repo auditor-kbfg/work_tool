@@ -1,0 +1,16 @@
+pefile>=2023.2.7
+
+[dev]
+jsonschema>=2.3.0
+pyinstaller>=6.5.0
+pyinstaller-hooks-contrib>=2024.3
+
+[full]
+yara-python>=3.8.0
+capstone>=3.0.5
+pycryptodome
+gcsfs>=2023.1.0
+s3fs>=2023.1.0
+
+[full:sys_platform != "darwin"]
+leechcorepyc>=2.4.0
