@@ -133,6 +133,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const startPortInput = document.getElementById('start-port');
     const endPortInput = document.getElementById('end-port');
     const progressBar = document.getElementById('progress');
+    fetchScanResults();
+    setInterval(fetchScanResults, 10000);  // 10초마다 새로고침
 
     // IP 목록 로드
     fetch('/get-ip-list')
@@ -224,16 +226,18 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(fetchScanResults, 5000);
     });
 
-    function fetchScanResults() {
-        fetch('/get-scan-results')
-        .then(response => response.json())
-        .then(results => {
-            updateResultsTable(results);
-        })
-        .catch(error => {
-            console.error('스캔 결과 가져오기 실패:', error);
-        });
-    }
+	function fetchScanResults() {
+		fetch('/get-scan-results')
+		.then(response => response.json())
+		.then(results => {
+			if (results.length > 0) {
+				updateResultsTable(results);
+			}
+		})
+		.catch(error => {
+			console.error('스캔 결과 가져오기 실패:', error);
+		});
+	}
 
     function updateResultsTable(results) {
         resultsBody.innerHTML = '';

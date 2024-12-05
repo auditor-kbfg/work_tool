@@ -96,12 +96,26 @@ def start_background_scan():
 
 @app.route('/get-scan-results')
 def get_scan_results():
-    """Retrieve port scanning results"""
+    """Retrieve the most recent port scanning results"""
     try:
         conn = port_scanner._get_scan_results_connection()
         cursor = conn.cursor()
-        cursor.execute('SELECT * FROM scan_results ORDER BY scan_time DESC')
-        results = cursor.fetchall()
+        
+        # 가장 최근 스캔 시간 찾기
+        cursor.execute('SELECT MAX(scan_time) FROM scan_results')
+        latest_scan_time = cursor.fetchone()[0]
+        
+        if latest_scan_time:
+            # 최근 스캔 시간의 결과만 가져오기
+            cursor.execute('''
+                SELECT * FROM scan_results 
+                WHERE scan_time = ? 
+                ORDER BY id
+            ''', (latest_scan_time,))
+            results = cursor.fetchall()
+        else:
+            # 결과가 없는 경우 빈 리스트 반환
+            results = []
         
         # Convert results to list of dictionaries
         columns = ['id', 'ip', 'port', 'protocol', 'service', 'server', 'scan_time']

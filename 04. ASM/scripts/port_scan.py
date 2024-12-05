@@ -18,6 +18,24 @@ class PortScanner:
     def _get_ip_connection(self):
         """IP 목록 데이터베이스 연결"""
         return sqlite3.connect(self.ip_db_path)
+        
+    def get_scan_results(self):
+        """가장 최근 스캔 결과 가져오기"""
+        conn = self._get_scan_results_connection()
+        cursor = conn.cursor()
+        
+        # 최근 스캔 시간의 결과만 가져오기
+        cursor.execute('''
+            SELECT * FROM scan_results 
+            WHERE scan_time = (
+                SELECT MAX(scan_time) FROM scan_results
+            )
+            ORDER BY id
+        ''')
+        
+        results = cursor.fetchall()
+        columns = ['id', 'ip', 'port', 'protocol', 'service', 'server', 'scan_time']
+        return [dict(zip(columns, result)) for result in results]
 
     def _get_scan_results_connection(self):
         """스캔 결과 데이터베이스 연결"""
