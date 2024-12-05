@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="ip-list-container">
+    <h1>IP 목록 관리</h1>
+
+    <div class="ip-add-form">
+        <h2>새 IP 추가</h2>
+        <form action="/ip-list/add" method="post">
+            <input type="text" name="ip_address" placeholder="IP 주소" required>
+            <input type="text" name="description" placeholder="설명 (선택)">
+            <button type="submit">추가</button>
+        </form>
+    </div>
+
+    <div class="ip-list">
+        <h2>현재 IP 목록</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>IP 주소</th>
+                    <th>설명</th>
+                    <th>상태</th>
+                    <th>마지막 확인</th>
+                    <th>액션</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ip in ip_list %}
+                <tr>
+                    <td>{{ ip[0] }}</td>
+                    <td>{{ ip[1] }}</td>
+                    <td>{{ ip[2] }}</td>
+                    <td>{{ ip[3] }}</td>
+                    <td>
+                        <form action="/ip-list/delete" method="post" style="display:inline;">
+                            <input type="hidden" name="ip_address" value="{{ ip[0] }}">
+                            <button type="submit">삭제</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .ip-list-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    .ip-add-form {
+        margin-bottom: 20px;
+        padding: 15px;
+        background-color: #f9f9f9;
+        border-radius: 5px;
+    }
+    .ip-add-form input, .ip-add-form button {
+        margin: 5px;
+        padding: 8px;
+    }
+    .ip-list table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .ip-list th, .ip-list td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+    }
+    .ip-list th {
+        background-color: #f2f2f2;
+    }
+</style>
+{% endblock %}

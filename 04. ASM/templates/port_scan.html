@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="port-scan-container">
+    <h1>포트 스캔</h1>
+
+    <div class="scan-controls">
+        <h2>스캔 옵션</h2>
+        <form id="scan-form">
+            <div class="scan-type">
+                <label>스캔 유형:</label>
+                <select id="scan-type">
+                    <option value="all">전체 IP 스캔</option>
+                    <option value="specific">특정 IP 스캔</option>
+                </select>
+            </div>
+
+            <div id="specific-ip-section" style="display:none;">
+                <label>IP 주소:</label>
+                <select id="specific-ip">
+                    <!-- IP 목록은 서버에서 동적으로 채워짐 -->
+                </select>
+            </div>
+
+            <div class="port-range">
+                <label>포트 범위:</label>
+                <input type="number" id="start-port" placeholder="시작 포트" value="1" min="1" max="65535">
+                <input type="number" id="end-port" placeholder="끝 포트" value="65535" min="1" max="65535">
+                <label>최대 65535</label>
+            </div>
+
+            <div class="scan-buttons">
+                <button type="button" id="manual-scan-btn">수동 스캔</button>
+                <button type="button" id="background-scan-btn">백그라운드 스캔</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="scan-status">
+        <h2>스캔 상태</h2>
+        <div id="status-messages"></div>
+        <div id="scan-progress-bar">
+            <div id="progress" style="width: 0%;"></div>
+        </div>
+    </div>
+
+    <div class="scan-results">
+        <h2>스캔 결과</h2>
+        <table id="results-table">
+            <thead>
+                <tr>
+                    <th>IP 주소</th>
+                    <th>포트</th>
+                    <th>프로토콜</th>
+                    <th>서비스</th>
+                    <th>상세 정보</th>
+                    <th>스캔 시간</th>
+                </tr>
+            </thead>
+            <tbody id="results-body">
+                <!-- 결과는 JavaScript로 동적 로드 -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .port-scan-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    .scan-controls {
+        background-color: #f4f4f4;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 5px;
+    }
+    .scan-controls form > div {
+        margin-bottom: 10px;
+    }
+    .port-range input {
+        width: 100px;
+        margin-right: 10px;
+    }
+    .scan-status, .scan-results {
+        background-color: #f9f9f9;
+        padding: 15px;
+        border-radius: 5px;
+    }
+    #results-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    #results-table th, #results-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+    }
+    #status-messages {
+        max-height: 200px;
+        overflow-y: auto;
+        background-color: white;
+        padding: 10px;
+        border: 1px solid #ddd;
+    }
+    #scan-progress-bar {
+        width: 100%;
+        background-color: #f3f3f3;
+        border-radius: 5px;
+        height: 30px;
+        margin-top: 10px;
+    }
+    #progress {
+        height: 100%;
+        background-color: #4caf50;
+        text-align: center;
+        line-height: 30px;
+        color: white;
+        border-radius: 5px;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const scanTypeSelect = document.getElementById('scan-type');
+    const specificIpSection = document.getElementById('specific-ip-section');
+    const specificIpSelect = document.getElementById('specific-ip');
+    const manualScanBtn = document.getElementById('manual-scan-btn');
+    const backgroundScanBtn = document.getElementById('background-scan-btn');
+    const statusMessages = document.getElementById('status-messages');
+    const resultsBody = document.getElementById('results-body');
+    const startPortInput = document.getElementById('start-port');
+    const endPortInput = document.getElementById('end-port');
+    const progressBar = document.getElementById('progress');
+
+    // IP 목록 로드
+    fetch('/get-ip-list')
+        .then(response => response.json())
+        .then(ips => {
+            ips.forEach(ip => {
+                const option = document.createElement('option');
+                option.value = ip;
+                option.textContent = ip;
+                specificIpSelect.appendChild(option);
+            });
+        });
+
+    // 스캔 유형 변경 시 처리
+    scanTypeSelect.addEventListener('change', function() {
+        specificIpSection.style.display = 
+            this.value === 'specific' ? 'block' : 'none';
+    });
+
+    // 수동 스캔 버튼 클릭
+    manualScanBtn.addEventListener('click', function() {
+        const scanType = scanTypeSelect.value;
+        const startPort = parseInt(startPortInput.value);
+        const endPort = parseInt(endPortInput.value);
+        
+        const requestData = {
+            scan_type: scanType,
+            start_port: startPort,
+            end_port: endPort
+        };
+
+        // 특정 IP 스캔의 경우 IP 추가
+        if (scanType === 'specific') {
+            requestData.ip = specificIpSelect.value;
+        }
+
+        // 상태 메시지 초기화
+        statusMessages.innerHTML = '스캔 시작...';
+        resultsBody.innerHTML = '';
+        progressBar.style.width = '0%';
+
+        fetch('/start-port-scan', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        })
+        .then(response => response.json())
+        .then(results => {
+            statusMessages.innerHTML = `스캔 완료. 발견된 포트: ${results.length}`;
+            updateResultsTable(results);
+        })
+        .catch(error => {
+            statusMessages.innerHTML = `스캔 중 오류 발생: ${error.message}`;
+        });
+    });
+
+    // 백그라운드 스캔 버튼 클릭
+    backgroundScanBtn.addEventListener('click', function() {
+        const startPort = parseInt(startPortInput.value);
+        const endPort = parseInt(endPortInput.value);
+        
+        const requestData = {
+            start_port: startPort,
+            end_port: endPort
+        };
+
+        // 상태 메시지 초기화
+        statusMessages.innerHTML = '백그라운드 스캔 시작...';
+        progressBar.style.width = '0%';
+
+        fetch('/start-background-scan', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            statusMessages.innerHTML = '백그라운드 스캔이 시작되었습니다.';
+        })
+        .catch(error => {
+            statusMessages.innerHTML = `백그라운드 스캔 시작 중 오류 발생: ${error.message}`;
+        });
+
+        // 결과 주기적으로 가져오기
+        setTimeout(fetchScanResults, 5000);
+    });
+
+    function fetchScanResults() {
+        fetch('/get-scan-results')
+        .then(response => response.json())
+        .then(results => {
+            updateResultsTable(results);
+        })
+        .catch(error => {
+            console.error('스캔 결과 가져오기 실패:', error);
+        });
+    }
+
+    function updateResultsTable(results) {
+        resultsBody.innerHTML = '';
+        results.forEach(result => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${result.ip}</td>
+                <td>${result.port}</td>
+                <td>${result.protocol || 'N/A'}</td>
+                <td>${result.service || 'N/A'}</td>
+                <td>${result.server || 'N/A'}</td>
+                <td>${result.scan_time || 'N/A'}</td>
+            `;
+            resultsBody.appendChild(row);
+        });
+    }
+
+    // 스캔 진행 상태 수신
+    const socket = io.connect('http://' + document.domain + ':' + location.port);
+
+    socket.on('scan_progress', function(data) {
+        if (data.progress !== undefined) {
+            progressBar.style.width = data.progress + '%';
+            progressBar.textContent = `${data.progress.toFixed(2)}%`;
+        }
+    });
+
+    // 페이지 로드 시 초기 결과 가져오기
+    fetchScanResults();
+});
+</script>
+{% endblock %}
