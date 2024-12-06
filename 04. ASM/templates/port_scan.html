@@ -49,12 +49,12 @@
         <table id="results-table">
             <thead>
                 <tr>
-                    <th>IP 주소</th>
-                    <th>포트</th>
-                    <th>프로토콜</th>
-                    <th>서비스</th>
-                    <th>상세 정보</th>
-                    <th>스캔 시간</th>
+					<th>IP 주소</th>
+					<th>포트</th>
+					<th>프로토콜</th>
+					<th>웹서비스</th>
+					<th>서버 정보</th>
+					<th>스캔 시간</th>
                 </tr>
             </thead>
             <tbody id="results-body">
@@ -134,7 +134,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const endPortInput = document.getElementById('end-port');
     const progressBar = document.getElementById('progress');
     fetchScanResults();
-    setInterval(fetchScanResults, 10000);  // 10초마다 새로고침
+    setInterval(fetchScanResults, 1000000);  // 1000초마다 새로고침
 
     // IP 목록 로드
     fetch('/get-ip-list')
@@ -228,32 +228,62 @@ document.addEventListener('DOMContentLoaded', function() {
 
 	function fetchScanResults() {
 		fetch('/get-scan-results')
-		.then(response => response.json())
-		.then(results => {
+		.then(response => {
+			// 응답이 JSON인지 확인
+			return response.json();
+		})
+		.then(data => {
+			// data가 배열인지 확인하고, 배열이 아니면 빈 배열로 처리
+			const results = Array.isArray(data) ? data : 
+							(data.results ? data.results : 
+							(data.data ? data.data : []));
+			
 			if (results.length > 0) {
 				updateResultsTable(results);
 			}
 		})
 		.catch(error => {
 			console.error('스캔 결과 가져오기 실패:', error);
+			// 오류 메시지를 상태 메시지 영역에 표시
+			if (statusMessages) {
+				statusMessages.innerHTML = `스캔 결과 가져오기 실패: ${error.message}`;
+			}
+		});
+	}
+		
+	function updateResultsTable(results) {
+		resultsBody.innerHTML = '';
+		results.forEach(result => {
+			const row = document.createElement('tr');
+			
+			const ipCell = document.createElement('td');
+			ipCell.textContent = result.ip;
+			row.appendChild(ipCell);
+			
+			const portCell = document.createElement('td');
+			portCell.textContent = result.port;
+			row.appendChild(portCell);
+			
+			const protocolCell = document.createElement('td');
+			protocolCell.textContent = result.protocol;
+			row.appendChild(protocolCell);
+			
+			const webServiceCell = document.createElement('td');
+			webServiceCell.textContent = result.service;
+			row.appendChild(webServiceCell);
+			
+			const serverInfoCell = document.createElement('td');
+			serverInfoCell.textContent = result.server_info;  
+			row.appendChild(serverInfoCell);
+			
+			const scanTimeCell = document.createElement('td');
+			scanTimeCell.textContent = result.scan_time;  
+			row.appendChild(scanTimeCell);
+			
+			resultsBody.appendChild(row);
 		});
 	}
 
-    function updateResultsTable(results) {
-        resultsBody.innerHTML = '';
-        results.forEach(result => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${result.ip}</td>
-                <td>${result.port}</td>
-                <td>${result.protocol || 'N/A'}</td>
-                <td>${result.service || 'N/A'}</td>
-                <td>${result.server || 'N/A'}</td>
-                <td>${result.scan_time || 'N/A'}</td>
-            `;
-            resultsBody.appendChild(row);
-        });
-    }
 
     // 스캔 진행 상태 수신
     const socket = io.connect('http://' + document.domain + ':' + location.port);

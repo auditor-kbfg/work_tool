@@ -2,9 +2,13 @@ import socket
 import sqlite3
 import threading
 import time
+import datetime
+import pytz #KST 시간받아오기
+import requests
+from urllib.parse import urlparse
 from flask_socketio import SocketIO, emit
 from concurrent.futures import ThreadPoolExecutor
-import socket
+import traceback
 
 class PortScanner:
     def __init__(self, socketio, ip_db_path='ip_list.db', scan_results_db_path='scan_results.db', max_threads=50):
@@ -25,16 +29,16 @@ class PortScanner:
         cursor = conn.cursor()
         
         # 최근 스캔 시간의 결과만 가져오기
-        cursor.execute('''
+        cursor.execute(''' 
             SELECT * FROM scan_results 
-            WHERE scan_time = (
-                SELECT MAX(scan_time) FROM scan_results
-            )
+            WHERE scan_time = ( 
+                SELECT MAX(scan_time) FROM scan_results 
+            ) 
             ORDER BY id
         ''')
         
         results = cursor.fetchall()
-        columns = ['id', 'ip', 'port', 'protocol', 'service', 'server', 'scan_time']
+        columns = ['id', 'ip', 'port', 'protocol', 'service', 'web_service', 'server_info', 'scan_time']
         return [dict(zip(columns, result)) for result in results]
 
     def _get_scan_results_connection(self):
@@ -52,7 +56,8 @@ class PortScanner:
                     port INTEGER NOT NULL,
                     protocol TEXT,
                     service TEXT,
-                    server TEXT,
+                    web_service TEXT,  
+                    server_info TEXT,  
                     scan_time DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
@@ -68,7 +73,7 @@ class PortScanner:
         except sqlite3.OperationalError:
             # IP 리스트 테이블이 없는 경우 빈 리스트 반환
             return []
-
+            
     def is_port_open(self, ip, port):
         """특정 포트가 열려있는지 확인"""
         try:
@@ -81,13 +86,15 @@ class PortScanner:
             return False
 
     def get_port_details(self, ip, port):
-        """포트의 상세 정보 가져오기 (기본값 사용)"""
+        """포트의 상세 정보 가져오기"""
+        web_service, server_info = self.check_web_service(ip, port)
         return {
             'ip': ip,
             'port': port,
             'protocol': 'tcp',
             'service': 'Unknown',
-            'server': 'Unknown'
+            'web_service': web_service,
+            'server_info': server_info
         }
 
     def scan_ports(self, ip, port_range=(1, 1024)):
@@ -107,24 +114,62 @@ class PortScanner:
                     print(f"Error scanning port {port} on {ip}: {e}")
         
         return results
+        
+    def check_web_service(self, ip, port):
+        """웹 서비스 확인 및 서버 정보 추출"""
+        web_services = ['http', 'https']
+        server_info = 'Unknown'
+        web_service = 'No'
 
+        for protocol in web_services:
+            try:
+                url = f"{protocol}://{ip}:{port}"
+                response = requests.get(url, timeout=3, allow_redirects=True)
+                
+                web_service = protocol.upper()
+                server_info = response.headers.get('Server', 'Unknown')
+                
+                # 서버 정보가 없으면 다른 헤더로 대체
+                if server_info == 'Unknown':
+                    server_info = response.headers.get('X-Powered-By', 'Unknown')
+                
+                break  # 첫 번째 성공한 프로토콜로 결정
+            except Exception:
+                continue
+
+        return web_service, server_info
+            
     def save_scan_results(self, results):
         """스캔 결과 저장"""
-        with self._get_scan_results_connection() as conn:
-            cursor = conn.cursor()
-            for result in results:
-                cursor.execute('''
-                    INSERT INTO scan_results 
-                    (ip, port, protocol, service, server, scan_time) 
-                    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                ''', (
-                    result['ip'], 
-                    result['port'], 
-                    result.get('protocol', ''),
-                    result.get('service', ''),
-                    result.get('server', '')
-                ))
-            conn.commit()
+        try:
+            # 서울시간 가져오기
+            seoul_tz = pytz.timezone('Asia/Seoul')
+            current_time = datetime.datetime.now(seoul_tz)
+            
+            with self._get_scan_results_connection() as conn:
+                cursor = conn.cursor()
+                for result in results:
+                    cursor.execute(''' 
+                        INSERT INTO scan_results 
+                        (ip, port, protocol, service, web_service, server_info, scan_time) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ''', (
+                        result['ip'], 
+                        result['port'], 
+                        result.get('protocol', ''),
+                        result.get('service', ''),
+                        result.get('web_service', 'No'),
+                        result.get('server_info', 'Unknown'), 
+                        current_time.isoformat()  # 정확한 시간 형식
+                    ))
+                conn.commit()
+        except sqlite3.OperationalError as e:
+            print(f"Database error: {e}")
+            print(f"Problematic result: {result}")
+        except Exception as e:
+            print(f"Unexpected error saving scan results: {e}")
+
+
 
     def scan_all_ips(self, port_range=(1, 1024)):
         """모든 IP 대상으로 포트 스캔"""
@@ -154,35 +199,3 @@ class PortScanner:
             scan_thread.start()
         else:
             print("Scan already in progress.")
-
-# Flask 웹 서버 및 SocketIO 설정
-from flask import Flask, render_template
-from flask_socketio import SocketIO
-
-app = Flask(__name__)
-socketio = SocketIO(app)
-
-scanner = PortScanner(socketio)
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/start-port-scan', methods=['POST'])
-def start_scan():
-    start_port = 1
-    end_port = 1024
-    socketio.emit('scan_status', {'status': 'Scan started...'})
-    scanner.start_background_scan((start_port, end_port))
-    return "Scan started"
-
-@socketio.on('connect')
-def handle_connect():
-    print("Client connected")
-
-@socketio.on('disconnect')
-def handle_disconnect():
-    print("Client disconnected")
-
-if __name__ == '__main__':
-    socketio.run(app, debug=True)

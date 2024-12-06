@@ -108,8 +108,9 @@ def get_scan_results():
         if latest_scan_time:
             # 최근 스캔 시간의 결과만 가져오기
             cursor.execute('''
-                SELECT * FROM scan_results 
-                WHERE scan_time = ? 
+                SELECT id, ip, port, protocol, service, web_service, server_info, scan_time
+                FROM scan_results
+                WHERE scan_time = ?
                 ORDER BY id
             ''', (latest_scan_time,))
             results = cursor.fetchall()
@@ -118,12 +119,13 @@ def get_scan_results():
             results = []
         
         # Convert results to list of dictionaries
-        columns = ['id', 'ip', 'port', 'protocol', 'service', 'server', 'scan_time']
+        columns = ['id', 'ip', 'port', 'protocol', 'service', 'server', 'server_info', 'scan_time']
         scan_results = [dict(zip(columns, result)) for result in results]
         
         return jsonify(scan_results), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/port-scan')
 def port_scan_route():
