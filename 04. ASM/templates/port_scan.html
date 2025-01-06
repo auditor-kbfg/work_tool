@@ -46,6 +46,10 @@
 
     <div class="scan-results">
         <h2>스캔 결과</h2>
+		<div class="export-controls">
+			<button type="button" id="export-csv-btn">CSV로 내보내기</button>
+			<button type="button" id="delete-results-btn">결과 삭제</button>
+		</div>
         <table id="results-table">
             <thead>
                 <tr>
@@ -133,8 +137,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const startPortInput = document.getElementById('start-port');
     const endPortInput = document.getElementById('end-port');
     const progressBar = document.getElementById('progress');
+	const exportCsvBtn = document.getElementById('export-csv-btn');
+	const deleteResultsBtn = document.getElementById('delete-results-btn');
     fetchScanResults();
-    setInterval(fetchScanResults, 1000000);  // 1000초마다 새로고침
 
     // IP 목록 로드
     fetch('/get-ip-list')
@@ -226,31 +231,86 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(fetchScanResults, 5000);
     });
 
-	function fetchScanResults() {
-		fetch('/get-scan-results')
-		.then(response => {
-			// 응답이 JSON인지 확인
-			return response.json();
+
+	// CSV 내보내기 버튼 이벤트 리스너
+	exportCsvBtn.addEventListener('click', function() {
+		fetch('/export-scan-results', {
+			method: 'GET'
 		})
-		.then(data => {
-			// data가 배열인지 확인하고, 배열이 아니면 빈 배열로 처리
-			const results = Array.isArray(data) ? data : 
-							(data.results ? data.results : 
-							(data.data ? data.data : []));
+		.then(response => {
+			console.log('Response status:', response.status);
+			console.log('Response headers:', response.headers);
 			
-			if (results.length > 0) {
-				updateResultsTable(results);
+			if (response.ok) {
+				return response.blob();
 			}
+			throw new Error('네트워크 응답이 정상적이지 않습니다.');
+		})
+		.then(blob => {
+			console.log('Blob size:', blob.size);
+			
+			// Blob을 다운로드 링크로 변환
+			const url = window.URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.style.display = 'none';
+			a.href = url;
+			
+			// 현재 시간으로 파일명 생성
+			const filename = `scan_results_${new Date().toISOString().replace(/:/g, '-')}.csv`;
+			a.download = filename;
+			
+			document.body.appendChild(a);
+			a.click();
+			
+			// 임시 요소 제거
+			window.URL.revokeObjectURL(url);
+			a.remove();
 		})
 		.catch(error => {
-			console.error('스캔 결과 가져오기 실패:', error);
-			// 오류 메시지를 상태 메시지 영역에 표시
-			if (statusMessages) {
-				statusMessages.innerHTML = `스캔 결과 가져오기 실패: ${error.message}`;
-			}
+			console.error('CSV 내보내기 전체 오류:', error);
+			console.error('오류 스택:', error.stack);
+			alert('CSV 파일 내보내기 중 오류가 발생했습니다: ' + error.message);
 		});
-	}
+	});
 		
+	deleteResultsBtn.addEventListener('click', function() {
+		console.log('결과 삭제 버튼 클릭됨');
+
+		if (confirm('모든 스캔 결과를 삭제하시겠습니까?')) {
+			fetch('/delete-scan-results', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				}
+			})
+			.then(response => response.json())
+			.then(data => {
+				console.log('서버 응답:', data);
+				alert(data.message || '결과 삭제에 실패했습니다.');
+				document.getElementById('results-body').innerHTML = '';
+				document.getElementById('status-messages').innerHTML = '모든 결과가 삭제되었습니다.';
+			})
+			.catch(error => {
+				console.error('삭제 오류:', error);
+				alert(`결과 삭제 중 오류 발생: ${error.message}`);
+			});
+		}
+	});
+
+	function fetchScanResults() {
+		fetch('/get-scan-results')
+			.then(response => response.json())
+			.then(results => {
+				// 중복된 데이터를 제거하기 위해 MAP 사용
+				const uniqueResults = [...new Map(results.map(item => [item.ip + ':' + item.port, item])).values()];
+
+				updateResultsTable(uniqueResults);
+			})
+			.catch(error => {
+				statusMessages.innerHTML = `스캔 결과 가져오기 실패: ${error.message}`;
+			});
+	}
+
 	function updateResultsTable(results) {
 		resultsBody.innerHTML = '';
 		results.forEach(result => {
@@ -269,7 +329,7 @@ document.addEventListener('DOMContentLoaded', function() {
 			row.appendChild(protocolCell);
 			
 			const webServiceCell = document.createElement('td');
-			webServiceCell.textContent = result.service;
+			webServiceCell.textContent = result.web_service;
 			row.appendChild(webServiceCell);
 			
 			const serverInfoCell = document.createElement('td');

@@ -39,3 +39,32 @@ body {
     background-color: #f4f4f4;
     overflow-y: auto;
 }
+
+.export-controls {
+    margin-top: 10px;
+    text-align: right;
+}
+.export-controls button {
+    padding: 8px 15px;
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.export-controls button:hover {
+    background-color: #45a049;
+}
+
+#delete-results-btn {
+    margin-left: 10px;
+    padding: 8px 15px;
+    background-color: #f44336;  /* 빨간색 버튼 */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+#delete-results-btn:hover {
+    background-color: #d32f2f;
+}

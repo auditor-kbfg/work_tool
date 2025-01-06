@@ -4,10 +4,16 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_socketio import SocketIO  # Flask-SocketIO에서 SocketIO를 임포트
 from scripts.port_scan import PortScanner  # PortScanner 클래스를 scripts 폴더에서 import
 from scripts.ip_management import IPManager
+import csv
+from flask import send_file, Flask, render_template, request, jsonify
+from flask_cors import CORS
+from scripts.ssl_info import get_ssl_certificate_info  # ssl_info.py에서 함수 가져오기
+
 
 app = Flask(__name__)
 ip_manager = IPManager()
 socketio = SocketIO(app)
+CORS(app) 
 
 # PortScanner 인스턴스를 생성할 때 socketio 객체를 전달
 port_scanner = PortScanner(socketio)
@@ -96,7 +102,27 @@ def start_background_scan():
 
 @app.route('/get-scan-results')
 def get_scan_results():
-    """Retrieve the most recent port scanning results"""
+    try:
+        conn = port_scanner._get_scan_results_connection()
+        cursor = conn.cursor()  # 커서를 명확히 정의
+        cursor.execute('''
+            SELECT ip, port, protocol, web_service, server_info, scan_time 
+            FROM scan_results
+        ''')
+        results = cursor.fetchall()
+
+        columns = ['ip', 'port', 'protocol', 'web_service', 'server_info', 'scan_time']
+        scan_results = [dict(zip(columns, row)) for row in results]
+
+        conn.close()
+        return jsonify(scan_results), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+      
+@app.route('/export-scan-results', methods=['GET', 'POST'])  # GET, POST 메서드 모두 허용
+def export_scan_results():
+    """최근 스캔 결과를 CSV 파일로 내보내기"""
     try:
         conn = port_scanner._get_scan_results_connection()
         cursor = conn.cursor()
@@ -108,7 +134,7 @@ def get_scan_results():
         if latest_scan_time:
             # 최근 스캔 시간의 결과만 가져오기
             cursor.execute('''
-                SELECT id, ip, port, protocol, service, web_service, server_info, scan_time
+                SELECT ip, port, protocol, web_service, server_info, scan_time
                 FROM scan_results
                 WHERE scan_time = ?
                 ORDER BY id
@@ -118,23 +144,63 @@ def get_scan_results():
             # 결과가 없는 경우 빈 리스트 반환
             results = []
         
-        # Convert results to list of dictionaries
-        columns = ['id', 'ip', 'port', 'protocol', 'service', 'server', 'server_info', 'scan_time']
-        scan_results = [dict(zip(columns, result)) for result in results]
+        # CSV 파일 생성 경로 설정
+        export_dir = os.path.join(os.path.dirname(__file__), 'exports')
+        os.makedirs(export_dir, exist_ok=True)
+        csv_filename = os.path.join(export_dir, f'scan_results_{latest_scan_time.replace(":", "-")}.csv')
         
-        return jsonify(scan_results), 200
+        # CSV 파일 작성
+        with open(csv_filename, 'w', newline='', encoding='utf-8-sig') as csvfile:
+            csv_writer = csv.writer(csvfile)
+            # 헤더 작성
+            csv_writer.writerow(['IP 주소', '포트', '프로토콜', '웹서비스', '서버 정보', '스캔 시간'])
+            
+            # 데이터 작성
+            csv_writer.writerows(results)
+        
+        # CSV 파일 전송
+        return send_file(csv_filename, 
+                         mimetype='text/csv', 
+                         as_attachment=True, 
+                         download_name=os.path.basename(csv_filename))
+    
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
+        
+@app.route('/delete-scan-results', methods=['GET', 'POST'])
+def delete_scan_results():
+    """DB에서 모든 스캔 결과 삭제"""
+    try:
+        conn = port_scanner._get_scan_results_connection()
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM scan_results')
+        conn.commit()
+        conn.close()
+        return jsonify({'message': '모든 스캔 결과가 삭제되었습니다.'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/port-scan')
 def port_scan_route():
     return render_template('port_scan.html')
 
-@app.route('/server-info')
-def server_info_route():
-    return render_template('server_info.html')
+@app.route('/ssl-info')
+def ssl_info_page():
+    return render_template('ssl_info.html')
 
+@app.route('/get-ssl-info')
+def get_ssl_info():
+    domain = request.args.get('domain')
+    if not domain:
+        return jsonify({'error': '도메인을 입력하세요.'}), 400
+
+    result = get_ssl_certificate_info(domain)
+    if 'error' in result:
+        return jsonify(result), 500
+
+    return jsonify(result)
+
+    
 @app.route('/options')
 def options_route():
     return render_template('options.html')

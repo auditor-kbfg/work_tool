@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="ssl-info-container">
+    <h1>SSL 인증서 정보</h1>
+    <p>도메인에 대한 SSL 인증서 정보를 조회할 수 있습니다.</p>
+
+    <form id="ssl-form">
+        <input type="text" id="domain-input" placeholder="도메인 입력 (예: example.com)" required>
+        <button type="button" id="check-ssl-btn">SSL 인증서 확인</button>
+    </form>
+
+    <div id="ssl-result" style="display:none;">
+        <h2>SSL 인증서 세부 정보</h2>
+        <p><strong>도메인:</strong> <span id="ssl-domain"></span></p>
+        <p><strong>유효 시작일:</strong> <span id="ssl-start-date"></span></p>
+        <p><strong>유효 종료일:</strong> <span id="ssl-end-date"></span></p>
+        <p><strong>발급자:</strong> <span id="ssl-issuer"></span></p>
+    </div>
+</div>
+
+<script>
+document.getElementById('check-ssl-btn').addEventListener('click', function() {
+    const domain = document.getElementById('domain-input').value.trim();
+    if (!domain) {
+        alert('도메인을 입력하세요.');
+        return;
+    }
+
+    fetch(`/get-ssl-info?domain=${encodeURIComponent(domain)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(`오류: ${data.error}`);
+                return;
+            }
+
+            document.getElementById('ssl-domain').textContent = data.domain;
+            document.getElementById('ssl-start-date').textContent = data.start_date;
+            document.getElementById('ssl-end-date').textContent = data.end_date;
+            document.getElementById('ssl-issuer').textContent = data.issuer;
+            document.getElementById('ssl-result').style.display = 'block';
+        })
+        .catch(error => {
+            alert(`SSL 정보 조회 중 오류 발생: ${error.message}`);
+        });
+});
+</script>
+{% endblock %}

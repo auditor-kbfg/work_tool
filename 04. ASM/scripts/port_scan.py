@@ -3,12 +3,13 @@ import sqlite3
 import threading
 import time
 import datetime
-import pytz #KST 시간받아오기
 import requests
 from urllib.parse import urlparse
 from flask_socketio import SocketIO, emit
 from concurrent.futures import ThreadPoolExecutor
 import traceback
+import pytz
+
 
 class PortScanner:
     def __init__(self, socketio, ip_db_path='ip_list.db', scan_results_db_path='scan_results.db', max_threads=50):
@@ -38,7 +39,7 @@ class PortScanner:
         ''')
         
         results = cursor.fetchall()
-        columns = ['id', 'ip', 'port', 'protocol', 'service', 'web_service', 'server_info', 'scan_time']
+        columns = ['id', 'ip', 'port', 'protocol', 'web_service', 'server_info', 'scan_time']
         return [dict(zip(columns, result)) for result in results]
 
     def _get_scan_results_connection(self):
@@ -55,7 +56,6 @@ class PortScanner:
                     ip TEXT NOT NULL,
                     port INTEGER NOT NULL,
                     protocol TEXT,
-                    service TEXT,
                     web_service TEXT,  
                     server_info TEXT,  
                     scan_time DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -86,13 +86,14 @@ class PortScanner:
             return False
 
     def get_port_details(self, ip, port):
-        """포트의 상세 정보 가져오기"""
+        if not ip:
+            raise ValueError("IP 주소는 필수입니다.")
+
         web_service, server_info = self.check_web_service(ip, port)
         return {
             'ip': ip,
             'port': port,
             'protocol': 'tcp',
-            'service': 'Unknown',
             'web_service': web_service,
             'server_info': server_info
         }
@@ -139,37 +140,40 @@ class PortScanner:
 
         return web_service, server_info
             
+
     def save_scan_results(self, results):
-        """스캔 결과 저장"""
         try:
-            # 서울시간 가져오기
+            from datetime import datetime
+            import pytz
+
+            # 서울 시간 설정
             seoul_tz = pytz.timezone('Asia/Seoul')
-            current_time = datetime.datetime.now(seoul_tz)
-            
+            current_time = datetime.now(seoul_tz)
+
             with self._get_scan_results_connection() as conn:
                 cursor = conn.cursor()
                 for result in results:
-                    cursor.execute(''' 
-                        INSERT INTO scan_results 
-                        (ip, port, protocol, service, web_service, server_info, scan_time) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ip = result.get('ip')
+                    if not ip:
+                        raise ValueError("IP 주소는 필수입니다.")
+
+                    cursor.execute('''
+                        INSERT OR IGNORE INTO scan_results 
+                        (ip, port, protocol, web_service, server_info, scan_time) 
+                        VALUES (?, ?, ?, ?, ?, ?)
                     ''', (
-                        result['ip'], 
-                        result['port'], 
+                        ip,
+                        result.get('port', 0),
                         result.get('protocol', ''),
-                        result.get('service', ''),
                         result.get('web_service', 'No'),
-                        result.get('server_info', 'Unknown'), 
-                        current_time.isoformat()  # 정확한 시간 형식
+                        result.get('server_info', 'Unknown'),
+                        current_time.strftime('%Y-%m-%d %H:%M:%S')
                     ))
                 conn.commit()
         except sqlite3.OperationalError as e:
             print(f"Database error: {e}")
-            print(f"Problematic result: {result}")
         except Exception as e:
             print(f"Unexpected error saving scan results: {e}")
-
-
 
     def scan_all_ips(self, port_range=(1, 1024)):
         """모든 IP 대상으로 포트 스캔"""
