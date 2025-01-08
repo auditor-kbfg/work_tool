@@ -7,7 +7,7 @@ from scripts.ip_management import IPManager
 import csv
 from flask import send_file, Flask, render_template, request, jsonify
 from flask_cors import CORS
-from scripts.ssl_info import get_ssl_certificate_info  # ssl_info.py에서 함수 가져오기
+from scripts.ssl_info import get_ssl_certificate_info, get_ssl_info_with_tls_versions # ssl_info.py에서 함수 가져오기
 
 
 app = Flask(__name__)
@@ -195,6 +195,18 @@ def get_ssl_info():
         return jsonify({'error': '도메인을 입력하세요.'}), 400
 
     result = get_ssl_certificate_info(domain)
+    if 'error' in result:
+        return jsonify(result), 500
+
+    return jsonify(result)
+
+@app.route('/get-ssl-info-with-tls')
+def get_ssl_info_with_tls():
+    domain = request.args.get('domain')
+    if not domain:
+        return jsonify({'error': '도메인을 입력하세요.'}), 400
+
+    result = get_ssl_info_with_tls_versions(domain)
     if 'error' in result:
         return jsonify(result), 500
 
