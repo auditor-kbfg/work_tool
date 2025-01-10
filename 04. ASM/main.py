@@ -7,7 +7,7 @@ from scripts.ip_management import IPManager
 import csv
 from flask import send_file, Flask, render_template, request, jsonify
 from flask_cors import CORS
-from scripts.ssl_info import get_ssl_certificate_info, get_ssl_info_with_tls_versions # ssl_info.py에서 함수 가져오기
+from scripts.ssl_info import check_tls_versions, get_ssl_certificate_info, get_ssl_info_with_tls_versions # ssl_info.py에서 함수 가져오기
 
 
 app = Flask(__name__)
@@ -199,6 +199,29 @@ def get_ssl_info():
         return jsonify(result), 500
 
     return jsonify(result)
+
+@app.route('/check-ssl-for-scanned-ips', methods=['POST'])
+def check_ssl_for_scanned_ips():
+    """포트 스캔된 IP에 대해 SSL/TLS 버전 점검"""
+    try:
+        # 스캔 결과 가져오기
+        scan_results = port_scanner.get_scan_results()
+        unique_ips_ports = {(result['ip'], result['port']) for result in scan_results}
+
+        ssl_results = []
+        for ip, port in unique_ips_ports:
+            domain = f"{ip}:{port}"
+            tls_info = check_tls_versions(ip)
+            ssl_results.append({
+                'domain': domain,
+                'tls_versions': tls_info
+            })
+
+        # JSON 배열로 반환
+        return jsonify(ssl_results if ssl_results else []), 200
+    except Exception as e:
+        return jsonify([]), 500
+
 
 @app.route('/get-ssl-info-with-tls')
 def get_ssl_info_with_tls():

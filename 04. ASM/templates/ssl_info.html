@@ -1,6 +1,30 @@
 {% extends "base.html" %}
 
 {% block content %}
+<div class="scan-results-container">
+    <h2>포트 스캔 결과에 대한 SSL/TLS 확인</h2>
+    <button type="button" id="check-ssl-scanned-btn">모든 스캔된 IP에 대해 SSL 확인</button>
+
+    <div id="ssl-scan-results" style="display:none;">
+        <h3>SSL/TLS 확인 결과</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>도메인</th>
+                    <th>TLS 1.0</th>
+                    <th>TLS 1.1</th>
+                    <th>TLS 1.2</th>
+                    <th>TLS 1.3</th>
+                </tr>
+            </thead>
+            <tbody id="ssl-scan-results-body">
+                <!-- 결과가 여기에 동적으로 추가됩니다 -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
 <div class="ssl-info-container">
     <h1>수동 SSL 인증서 및 TLS 버전 검색</h1>
     <p>도메인에 대한 SSL 인증서 정보와 지원하는 TLS 버전을 검색을 통해 조회할 수 있습니다.</p>
@@ -23,40 +47,98 @@
 </div>
 
 <script>
-document.getElementById('check-ssl-btn').addEventListener('click', function() {
-    const domain = document.getElementById('domain-input').value.trim();
-    if (!domain) {
-        alert('도메인을 입력하세요.');
-        return;
+    document.getElementById('check-ssl-btn').addEventListener('click', function() {
+        const domain = document.getElementById('domain-input').value.trim();
+        if (!domain) {
+            alert('도메인을 입력하세요.');
+            return;
+        }
+    
+        fetch(`/get-ssl-info-with-tls?domain=${encodeURIComponent(domain)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(`오류: ${data.error}`);
+                    return;
+                }
+    
+                document.getElementById('ssl-domain').textContent = data.domain;
+                document.getElementById('ssl-start-date').textContent = data.start_date;
+                document.getElementById('ssl-end-date').textContent = data.end_date;
+                document.getElementById('ssl-issuer').textContent = data.issuer;
+    
+                const tlsList = document.getElementById('tls-versions');
+                tlsList.innerHTML = '';
+                for (const [version, status] of Object.entries(data.tls_versions)) {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = `${version}: ${status}`;
+                    tlsList.appendChild(listItem);
+                }
+    
+                document.getElementById('ssl-result').style.display = 'block';
+            })
+            .catch(error => {
+                alert(`SSL/TLS 정보 조회 중 오류 발생: ${error.message}`);
+            });
+    });
+    
+    document.getElementById('check-ssl-scanned-btn').addEventListener('click', function() {
+    console.log('POST 요청 전송 중...');  // 디버깅용 로그 추가
+
+    fetch('/check-ssl-for-scanned-ips', {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('SSL 스캔 결과:', data);
+
+        if (!Array.isArray(data)) {
+            alert('서버에서 잘못된 데이터 형식이 반환되었습니다.');
+            return;
+        }
+
+        const resultsBody = document.getElementById('ssl-scan-results-body');
+        resultsBody.innerHTML = '';
+
+        if (data.length === 0) {
+            alert('스캔 결과가 없습니다.');
+            return;
+        }
+
+        updateResultsTable(data);
+
+        document.getElementById('ssl-scan-results').style.display = 'block';
+    })
+    .catch(error => {
+        alert(`오류 발생: ${error.message}`);
+    });
+    });
+
+
+    function updateResultsTable(results) {
+    const resultsBody = document.getElementById('ssl-scan-results-body');
+    resultsBody.innerHTML = '';  // 기존 내용 초기화
+
+    results.forEach(result => {
+        const row = document.createElement('tr');
+
+        // 첫 번째 열: 도메인 (IP:포트)
+        const domainCell = document.createElement('td');
+        domainCell.textContent = result.domain;
+        row.appendChild(domainCell);
+
+        // 나머지 열: TLS 버전별 상태
+        ['TLS 1.0', 'TLS 1.1', 'TLS 1.2', 'TLS 1.3'].forEach(version => {
+            const tlsCell = document.createElement('td');
+            tlsCell.textContent = result.tls_versions[version] || 'Unknown';
+            row.appendChild(tlsCell);
+        });
+
+        resultsBody.appendChild(row);
+    });
     }
 
-    fetch(`/get-ssl-info-with-tls?domain=${encodeURIComponent(domain)}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                alert(`오류: ${data.error}`);
-                return;
-            }
 
-            document.getElementById('ssl-domain').textContent = data.domain;
-            document.getElementById('ssl-start-date').textContent = data.start_date;
-            document.getElementById('ssl-end-date').textContent = data.end_date;
-            document.getElementById('ssl-issuer').textContent = data.issuer;
-
-            // TLS 버전 정보 업데이트
-            const tlsList = document.getElementById('tls-versions');
-            tlsList.innerHTML = ''; // 기존 내용 지우기
-            for (const [version, status] of Object.entries(data.tls_versions)) {
-                const listItem = document.createElement('li');
-                listItem.textContent = `${version}: ${status}`;
-                tlsList.appendChild(listItem);
-            }
-
-            document.getElementById('ssl-result').style.display = 'block';
-        })
-        .catch(error => {
-            alert(`SSL/TLS 정보 조회 중 오류 발생: ${error.message}`);
-        });
-});
 </script>
+    
 {% endblock %}

@@ -52,6 +52,35 @@ def check_tls_versions(domain):
 
     return results
 
+def check_tls_versions(domain):
+    """웹사이트 또는 IP:포트에서 지원하는 SSL/TLS 버전을 확인합니다."""
+    tls_versions = {
+        "TLS 1.3": ssl.TLSVersion.TLSv1_3,
+        "TLS 1.2": ssl.TLSVersion.TLSv1_2,
+        "TLS 1.1": ssl.TLSVersion.TLSv1_1,
+        "TLS 1.0": ssl.TLSVersion.TLSv1
+    }
+
+    results = {}
+    host, _, port = domain.partition(':')
+    port = int(port) if port else 443
+
+    for version_name, version in tls_versions.items():
+        try:
+            context = ssl.create_default_context()
+            context.minimum_version = version
+            context.maximum_version = version
+            with socket.create_connection((host, port), timeout=5) as sock:
+                with context.wrap_socket(sock, server_hostname=host):
+                    results[version_name] = "Supported"
+        except (ssl.SSLError, socket.error):
+            # 오류가 발생하면 "지원 안 함"으로 처리
+            results[version_name] = "Not Supported"
+
+    return results
+
+
+
 def get_ssl_info_with_tls_versions(domain):
     """SSL 인증서 정보와 TLS 버전 지원 여부를 함께 조회합니다."""
     cert_info = get_ssl_certificate_info(domain)
