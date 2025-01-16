@@ -1,6 +1,62 @@
 import ssl
 import socket
 from datetime import datetime
+import warnings
+import logging
+
+
+# 경고 메시지 숨기기
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+#로그설정
+logging.basicConfig(filename="ssl_errors.log", level=logging.ERROR, format="%(asctime)s - %(message)s")
+
+
+def check_ssl_for_scanned_ports(scan_results):
+    tls_versions = {
+        "TLSv1_0": ssl.PROTOCOL_TLSv1,
+        "TLSv1_1": ssl.PROTOCOL_TLSv1_1,
+        "TLSv1_2": ssl.PROTOCOL_TLSv1_2,
+        "TLSv1_3": ssl.PROTOCOL_TLS_CLIENT  # TLS 1.3은 기본 컨텍스트 사용
+    }
+
+    results = []
+
+    for result in scan_results:
+        ip = result['ip']
+        port = result['port']
+        tls_support = {}
+
+        for version, protocol in tls_versions.items():
+            try:
+                # TLS 1.3은 기본 컨텍스트 사용
+                if version == "TLSv1_3":
+                    context = ssl.create_default_context()
+                    context.check_hostname = False
+                    context.verify_mode = ssl.CERT_NONE
+                else:
+                    context = ssl.SSLContext(protocol)
+                    context.check_hostname = False
+                    context.verify_mode = ssl.CERT_NONE
+
+                # IP와 포트를 사용하여 연결
+                with socket.create_connection((ip, port), timeout=5) as sock:
+                    with context.wrap_socket(sock, server_hostname=ip):
+                        tls_support[version] = "Supported"
+            except ssl.SSLError:
+                tls_support[version] = "Not Supported"
+            except Exception as e:
+                logging.error(f"Error for {ip}:{port} - TLS Version {version}: {str(e)}")
+                tls_support[version] = "Error"
+
+        results.append({
+            "ip": ip,
+            "port": port,
+            "tls_support": tls_support,
+        })
+
+    return results
+
 
 def get_ssl_certificate_info(domain):
     """도메인의 SSL 인증서 정보를 조회합니다."""
@@ -49,33 +105,6 @@ def check_tls_versions(domain):
             results[version_name] = "Not Supported"
         except Exception as e:
             results[version_name] = f"Error: {str(e)}"
-
-    return results
-
-def check_tls_versions(domain):
-    """웹사이트 또는 IP:포트에서 지원하는 SSL/TLS 버전을 확인합니다."""
-    tls_versions = {
-        "TLS 1.3": ssl.TLSVersion.TLSv1_3,
-        "TLS 1.2": ssl.TLSVersion.TLSv1_2,
-        "TLS 1.1": ssl.TLSVersion.TLSv1_1,
-        "TLS 1.0": ssl.TLSVersion.TLSv1
-    }
-
-    results = {}
-    host, _, port = domain.partition(':')
-    port = int(port) if port else 443
-
-    for version_name, version in tls_versions.items():
-        try:
-            context = ssl.create_default_context()
-            context.minimum_version = version
-            context.maximum_version = version
-            with socket.create_connection((host, port), timeout=5) as sock:
-                with context.wrap_socket(sock, server_hostname=host):
-                    results[version_name] = "Supported"
-        except (ssl.SSLError, socket.error):
-            # 오류가 발생하면 "지원 안 함"으로 처리
-            results[version_name] = "Not Supported"
 
     return results
 

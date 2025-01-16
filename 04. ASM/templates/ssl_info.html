@@ -10,7 +10,7 @@
         <table>
             <thead>
                 <tr>
-                    <th>도메인</th>
+                    <th>IP:PORT</th>
                     <th>TLS 1.0</th>
                     <th>TLS 1.1</th>
                     <th>TLS 1.2</th>
@@ -47,97 +47,62 @@
 </div>
 
 <script>
-    document.getElementById('check-ssl-btn').addEventListener('click', function() {
-        const domain = document.getElementById('domain-input').value.trim();
-        if (!domain) {
-            alert('도메인을 입력하세요.');
-            return;
-        }
-    
-        fetch(`/get-ssl-info-with-tls?domain=${encodeURIComponent(domain)}`)
-            .then(response => response.json())
+    document.getElementById('check-ssl-scanned-btn').addEventListener('click', function() {
+        console.log('POST 요청 전송 중...');
+
+        fetch('/check-ssl-for-scanned-ips', { method: 'POST' })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
-                if (data.error) {
-                    alert(`오류: ${data.error}`);
+                console.log('SSL 스캔 결과:', data);
+
+                if (!Array.isArray(data)) {
+                    alert('서버에서 잘못된 데이터 형식이 반환되었습니다.');
                     return;
                 }
-    
-                document.getElementById('ssl-domain').textContent = data.domain;
-                document.getElementById('ssl-start-date').textContent = data.start_date;
-                document.getElementById('ssl-end-date').textContent = data.end_date;
-                document.getElementById('ssl-issuer').textContent = data.issuer;
-    
-                const tlsList = document.getElementById('tls-versions');
-                tlsList.innerHTML = '';
-                for (const [version, status] of Object.entries(data.tls_versions)) {
-                    const listItem = document.createElement('li');
-                    listItem.textContent = `${version}: ${status}`;
-                    tlsList.appendChild(listItem);
-                }
-    
-                document.getElementById('ssl-result').style.display = 'block';
+
+                updateResultsTable(data);
+                document.getElementById('ssl-scan-results').style.display = 'block';
             })
             .catch(error => {
-                alert(`SSL/TLS 정보 조회 중 오류 발생: ${error.message}`);
+                console.error('오류 발생:', error);
+                alert(`오류 발생: ${error.message}`);
             });
-    });
-    
-    document.getElementById('check-ssl-scanned-btn').addEventListener('click', function() {
-    console.log('POST 요청 전송 중...');  // 디버깅용 로그 추가
-
-    fetch('/check-ssl-for-scanned-ips', {
-        method: 'POST'
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log('SSL 스캔 결과:', data);
-
-        if (!Array.isArray(data)) {
-            alert('서버에서 잘못된 데이터 형식이 반환되었습니다.');
-            return;
-        }
-
-        const resultsBody = document.getElementById('ssl-scan-results-body');
-        resultsBody.innerHTML = '';
-
-        if (data.length === 0) {
-            alert('스캔 결과가 없습니다.');
-            return;
-        }
-
-        updateResultsTable(data);
-
-        document.getElementById('ssl-scan-results').style.display = 'block';
-    })
-    .catch(error => {
-        alert(`오류 발생: ${error.message}`);
-    });
     });
 
 
     function updateResultsTable(results) {
-    const resultsBody = document.getElementById('ssl-scan-results-body');
-    resultsBody.innerHTML = '';  // 기존 내용 초기화
+        const resultsBody = document.getElementById('ssl-scan-results-body');
+        resultsBody.innerHTML = '';  // 기존 내용을 초기화
 
-    results.forEach(result => {
-        const row = document.createElement('tr');
+        results.forEach(result => {
+            const row = document.createElement('tr');
 
-        // 첫 번째 열: 도메인 (IP:포트)
-        const domainCell = document.createElement('td');
-        domainCell.textContent = result.domain;
-        row.appendChild(domainCell);
+            // 첫 번째 열: 도메인 또는 IP:포트
+            const domainCell = document.createElement('td');
+            domainCell.textContent = `${result.ip}:${result.port}`;
+            row.appendChild(domainCell);
 
-        // 나머지 열: TLS 버전별 상태
-        ['TLS 1.0', 'TLS 1.1', 'TLS 1.2', 'TLS 1.3'].forEach(version => {
-            const tlsCell = document.createElement('td');
-            tlsCell.textContent = result.tls_versions[version] || 'Unknown';
-            row.appendChild(tlsCell);
+            // 나머지 열: TLS 버전별 상태
+            ['TLSv1_0', 'TLSv1_1', 'TLSv1_2', 'TLSv1_3'].forEach(version => {
+                const tlsCell = document.createElement('td');
+
+                // result.tls_support가 undefined일 경우 대비
+                const tlsStatus = result.tls_support && result.tls_support[version]
+                    ? result.tls_support[version]
+                    : 'Unknown';
+
+                tlsCell.textContent = tlsStatus;
+                row.appendChild(tlsCell);
+            });
+
+            resultsBody.appendChild(row);
         });
-
-        resultsBody.appendChild(row);
-    });
     }
-
 
 </script>
     

@@ -3,3 +3,4 @@ v6: 결과 파일 DB 삭제
 v7. ssl 점검 추가
 v8: ssl 기능 추가
 v9: ssl 포트 검색 기능 추가
+v10: IP base ssl 검색 기능 추가

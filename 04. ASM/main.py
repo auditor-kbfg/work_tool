@@ -7,7 +7,7 @@ from scripts.ip_management import IPManager
 import csv
 from flask import send_file, Flask, render_template, request, jsonify
 from flask_cors import CORS
-from scripts.ssl_info import check_tls_versions, get_ssl_certificate_info, get_ssl_info_with_tls_versions # ssl_info.py에서 함수 가져오기
+from scripts.ssl_info import check_ssl_for_scanned_ports, get_ssl_certificate_info, get_ssl_info_with_tls_versions # ssl_info.py에서 함수 가져오기
 
 
 app = Flask(__name__)
@@ -200,28 +200,23 @@ def get_ssl_info():
 
     return jsonify(result)
 
-@app.route('/check-ssl-for-scanned-ips', methods=['POST'])
+
+
+@app.route('/check-ssl-for-scanned-ips', methods=['POST', 'GET'])
 def check_ssl_for_scanned_ips():
-    """포트 스캔된 IP에 대해 SSL/TLS 버전 점검"""
+    """포트 스캔된 IP와 포트에 대해 SSL/TLS 버전 점검"""
     try:
-        # 스캔 결과 가져오기
-        scan_results = port_scanner.get_scan_results()
-        unique_ips_ports = {(result['ip'], result['port']) for result in scan_results}
+        # 포트 스캔 결과 가져오기
+        scan_results = port_scanner.get_scan_results()  # IP, 포트 포함
+        print("Scan Results from Port Scanner:", scan_results)
+        # 새 함수로 점검 수행
+        ssl_results = check_ssl_for_scanned_ports(scan_results)
+        print("SSL Results to Return:", ssl_results)
 
-        ssl_results = []
-        for ip, port in unique_ips_ports:
-            domain = f"{ip}:{port}"
-            tls_info = check_tls_versions(ip)
-            ssl_results.append({
-                'domain': domain,
-                'tls_versions': tls_info
-            })
-
-        # JSON 배열로 반환
-        return jsonify(ssl_results if ssl_results else []), 200
+        return jsonify(ssl_results), 200
     except Exception as e:
-        return jsonify([]), 500
-
+        return jsonify({'error': str(e)}), 500
+    
 
 @app.route('/get-ssl-info-with-tls')
 def get_ssl_info_with_tls():
@@ -235,14 +230,8 @@ def get_ssl_info_with_tls():
 
     return jsonify(result)
 
-    
-@app.route('/options')
-def options_route():
-    return render_template('options.html')
 
-@app.route('/put')
-def put_route():
-    return render_template('put.html')
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
