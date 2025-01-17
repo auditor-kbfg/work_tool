@@ -28,10 +28,9 @@
             <tbody>
                 {% for ip in ip_list %}
                 <tr>
-                    <td>{{ ip[0] }}</td>
-                    <td>{{ ip[1] }}</td>
-                    <td>{{ ip[2] }}</td>
-                    <td>{{ ip[3] }}</td>
+                    {% for field in ip %}
+                    <td>{{ field }}</td>
+                    {% endfor %}
                     <td>
                         <form action="/ip-list/delete" method="post" style="display:inline;">
                             <input type="hidden" name="ip_address" value="{{ ip[0] }}">
@@ -43,34 +42,57 @@
             </tbody>
         </table>
     </div>
+
+
+    <div class="dns-search">
+        <h2>DNS A 레코드 조회</h2>
+        <form id="dns-form">
+            <input type="text" id="domain-input" name="domain" placeholder="도메인 입력 (예: www.google.com)" required>
+            <button type="submit">조회</button>
+        </form>
+    </div>
+
+    <div class="dns-results" id="dns-results">
+        <!-- 검색 결과가 여기에 표시됩니다 -->
+    </div>
 </div>
 
-<style>
-    .ip-list-container {
-        max-width: 800px;
-        margin: 0 auto;
-    }
-    .ip-add-form {
-        margin-bottom: 20px;
-        padding: 15px;
-        background-color: #f9f9f9;
-        border-radius: 5px;
-    }
-    .ip-add-form input, .ip-add-form button {
-        margin: 5px;
-        padding: 8px;
-    }
-    .ip-list table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-    .ip-list th, .ip-list td {
-        border: 1px solid #ddd;
-        padding: 8px;
-        text-align: left;
-    }
-    .ip-list th {
-        background-color: #f2f2f2;
-    }
-</style>
+<script>
+    document.getElementById('dns-form').addEventListener('submit', async function(e) {
+        e.preventDefault(); // 폼의 기본 제출 동작 방지
+
+        const domainInput = document.getElementById('domain-input');
+        const domain = domainInput.value;
+
+        try {
+            const response = await fetch('/dns-lookup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({ domain }) // POST 데이터
+            });
+
+            const result = await response.json();
+
+            const resultsContainer = document.getElementById('dns-results');
+            resultsContainer.innerHTML = ''; // 기존 결과 지우기
+
+            if (result.error) {
+                resultsContainer.innerHTML = `<p style="color: red;">오류: ${result.error}</p>`;
+            } else {
+                resultsContainer.innerHTML = `
+                    <h3>조회 결과:</h3>
+                    <p>도메인: <strong>${result.domain}</strong></p>
+                    <ul>
+                        ${result.ips.map(ip => `<li>${ip}</li>`).join('')}
+                    </ul>
+                `;
+            }
+        } catch (error) {
+            console.error('DNS 조회 오류:', error);
+        }
+    });
+</script>
+
 {% endblock %}

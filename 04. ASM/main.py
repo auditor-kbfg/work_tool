@@ -1,12 +1,12 @@
 import os
 import sqlite3
-from flask import Flask, render_template, request, jsonify, redirect, url_for
-from flask_socketio import SocketIO  # Flask-SocketIO에서 SocketIO를 임포트
-from scripts.port_scan import PortScanner  # PortScanner 클래스를 scripts 폴더에서 import
-from scripts.ip_management import IPManager
 import csv
 from flask import send_file, Flask, render_template, request, jsonify
 from flask_cors import CORS
+from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask_socketio import SocketIO  # Flask-SocketIO에서 SocketIO를 임포트
+from scripts.port_scan import PortScanner  # PortScanner 클래스를 scripts 폴더에서 import
+from scripts.ip_management import IPManager, get_a_records
 from scripts.ssl_info import DB_PATH, save_ssl_results, check_ssl_for_scanned_ports, get_ssl_certificate_info, get_ssl_info_with_tls_versions # ssl_info.py에서 함수 가져오기
 
 
@@ -42,6 +42,16 @@ def delete_ip():
     success, message = ip_manager.remove_ip(ip_address)
     
     return redirect(url_for('ip_list'))
+
+@app.route("/dns-lookup", methods=["GET", "POST"])
+def dns_lookup():
+    domain = request.form.get('domain') if request.method == 'POST' else request.args.get('domain')
+    if not domain:
+        return jsonify({'error': '도메인을 입력하세요.'}), 400
+
+    ips = get_a_records(domain)  # A 레코드 조회
+    return jsonify({'domain': domain, 'ips': ips})
+
 
 @app.route('/get-ip-list')
 def get_ip_list():

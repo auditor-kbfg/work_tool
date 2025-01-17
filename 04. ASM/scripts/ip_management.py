@@ -1,5 +1,6 @@
 import sqlite3
 import ipaddress
+import dns.resolver
 
 class IPManager:
     def __init__(self, db_path='ip_list.db'):
@@ -120,6 +121,14 @@ class IPManager:
             cursor = conn.cursor()
             cursor.execute('SELECT ip_address, description, status, last_seen FROM ip_list')
             return cursor.fetchall()
+
+def get_a_records(domain):
+    try:
+        # A 레코드 조회
+        answers = dns.resolver.resolve(domain, 'A')
+        return [answer.to_text() for answer in answers]
+    except Exception as e:
+        return [f"오류 발생: {e}"]
 
 # 사용 예시
 def main():

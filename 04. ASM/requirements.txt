@@ -4,5 +4,6 @@ flask
 flask-socketio
 flask-cors
 requests
+dnspython
 pytz
-eventlet  # Flask-SocketIO¿¡¼­ ÇÊ¿äÇÒ ¼ö ÀÖÀ½
+eventlet  # Flask-SocketIOï¿½ï¿½ï¿½ï¿½ ï¿½Ê¿ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½

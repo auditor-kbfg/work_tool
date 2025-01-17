@@ -2,7 +2,7 @@ import ssl
 import socket
 from datetime import datetime
 import warnings
-import logging
+#import logging
 import sqlite3
 
 DB_PATH = "ssl_scan_results.db"
@@ -49,7 +49,7 @@ initialize_ssl_db()
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 #로그설정
-logging.basicConfig(filename="ssl_errors.log", level=logging.ERROR, format="%(asctime)s - %(message)s")
+#logging.basicConfig(filename="ssl_errors.log", level=logging.ERROR, format="%(asctime)s - %(message)s")
 
 
 def check_ssl_for_scanned_ports(scan_results):
@@ -86,7 +86,7 @@ def check_ssl_for_scanned_ports(scan_results):
             except ssl.SSLError:
                 tls_support[version] = "Not Supported"
             except Exception as e:
-                logging.error(f"Error for {ip}:{port} - TLS Version {version}: {str(e)}")
+                #logging.error(f"Error for {ip}:{port} - TLS Version {version}: {str(e)}")
                 tls_support[version] = "Error"
 
         results.append({
@@ -123,7 +123,7 @@ def get_ssl_certificate_info(domain):
         return {'error': str(e)}
 
 def check_tls_versions(domain):
-    """웹사이트에서 지원하는 SSL/TLS 버전을 확인합니다."""
+
     tls_versions = {
         "TLS 1.3": ssl.TLSVersion.TLSv1_3,
         "TLS 1.2": ssl.TLSVersion.TLSv1_2,
@@ -149,9 +149,10 @@ def check_tls_versions(domain):
     return results
 
 
-
 def get_ssl_info_with_tls_versions(domain):
     """SSL 인증서 정보와 TLS 버전 지원 여부를 함께 조회합니다."""
+        
+
     cert_info = get_ssl_certificate_info(domain)
     tls_versions = check_tls_versions(domain)
 
@@ -161,7 +162,8 @@ def get_ssl_info_with_tls_versions(domain):
     cert_info['tls_versions'] = tls_versions
     return cert_info
 
-# 테스트용 코드
+
+
 if __name__ == "__main__":
     domain = input("도메인을 입력하세요: ").strip()
     info = get_ssl_info_with_tls_versions(domain)

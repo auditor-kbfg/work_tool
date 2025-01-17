@@ -92,6 +92,31 @@
     });
 
 
+    document.getElementById('check-ssl-btn').addEventListener('click', function() {
+        const domain = document.getElementById('domain-input').value.trim();
+        if (!domain) {
+            alert('도메인을 입력하세요.');
+            return;
+        }
+        fetch(`/get-ssl-info?domain=${encodeURIComponent(domain)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(`오류: ${data.error}`);
+                    return;
+                }
+                document.getElementById('ssl-domain').textContent = data.domain;
+                document.getElementById('ssl-start-date').textContent = data.start_date;
+                document.getElementById('ssl-end-date').textContent = data.end_date;
+                document.getElementById('ssl-issuer').textContent = data.issuer;
+                document.getElementById('ssl-result').style.display = 'block';
+                
+            })
+            .catch(error => {
+                alert(`SSL 정보 조회 중 오류 발생: ${error.message}`);
+            });
+    });
+
     function updateResultsTable(results) {
         const resultsBody = document.getElementById('ssl-scan-results-body');
         resultsBody.innerHTML = '';  // 기존 내용을 초기화
