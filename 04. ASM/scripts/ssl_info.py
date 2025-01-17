@@ -3,7 +3,47 @@ import socket
 from datetime import datetime
 import warnings
 import logging
+import sqlite3
 
+DB_PATH = "ssl_scan_results.db"
+
+def initialize_ssl_db():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS ssl_results (
+            ip TEXT,
+            port INTEGER,
+            tls_v1_0 TEXT,
+            tls_v1_1 TEXT,
+            tls_v1_2 TEXT,
+            tls_v1_3 TEXT,
+            scan_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+def save_ssl_results(results):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    for result in results:
+        cursor.execute('''
+            INSERT INTO ssl_results (ip, port, tls_v1_0, tls_v1_1, tls_v1_2, tls_v1_3)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (
+            result['ip'],
+            result['port'],
+            result['tls_support'].get('TLSv1_0', 'Unknown'),
+            result['tls_support'].get('TLSv1_1', 'Unknown'),
+            result['tls_support'].get('TLSv1_2', 'Unknown'),
+            result['tls_support'].get('TLSv1_3', 'Unknown')
+        ))
+    conn.commit()
+    conn.close()
+
+# DB 초기화 실행
+initialize_ssl_db()
 
 # 경고 메시지 숨기기
 warnings.filterwarnings("ignore", category=DeprecationWarning)

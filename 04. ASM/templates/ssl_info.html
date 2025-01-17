@@ -47,6 +47,23 @@
 </div>
 
 <script>
+
+    //DB에서 결과 가져오기
+    document.addEventListener('DOMContentLoaded', function() {
+        fetch('/get-saved-ssl-results')
+            .then(response => response.json())
+            .then(data => {
+                if (Array.isArray(data)) {
+                    updateResultsTable(data);
+                    document.getElementById('ssl-scan-results').style.display = 'block';
+                } else {
+                    console.error('잘못된 데이터 형식:', data);
+                }
+            })
+            .catch(error => console.error('오류 발생:', error));
+    });
+
+
     document.getElementById('check-ssl-scanned-btn').addEventListener('click', function() {
         console.log('POST 요청 전송 중...');
 

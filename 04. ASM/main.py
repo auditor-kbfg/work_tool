@@ -7,7 +7,7 @@ from scripts.ip_management import IPManager
 import csv
 from flask import send_file, Flask, render_template, request, jsonify
 from flask_cors import CORS
-from scripts.ssl_info import check_ssl_for_scanned_ports, get_ssl_certificate_info, get_ssl_info_with_tls_versions # ssl_info.py에서 함수 가져오기
+from scripts.ssl_info import DB_PATH, save_ssl_results, check_ssl_for_scanned_ports, get_ssl_certificate_info, get_ssl_info_with_tls_versions # ssl_info.py에서 함수 가져오기
 
 
 app = Flask(__name__)
@@ -200,6 +200,41 @@ def get_ssl_info():
 
     return jsonify(result)
 
+@app.route('/get-saved-ssl-results', methods=['GET'])
+def get_saved_ssl_results():
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+
+        # 모든 스캔 결과 가져오기
+        cursor.execute('SELECT ip, port, tls_v1_0, tls_v1_1, tls_v1_2, tls_v1_3, scan_time FROM ssl_results')
+        rows = cursor.fetchall()
+        conn.close()
+
+        # 최신 결과만 유지하기 위해 중복 제거
+        unique_results = {}
+        for row in rows:
+            key = f"{row[0]}:{row[1]}"  # IP:PORT 기준
+            scan_time = row[6]
+
+            if key not in unique_results or unique_results[key]['scan_time'] < scan_time:
+                unique_results[key] = {
+                    'ip': row[0],
+                    'port': row[1],
+                    'tls_support': {
+                        'TLSv1_0': row[2],
+                        'TLSv1_1': row[3],
+                        'TLSv1_2': row[4],
+                        'TLSv1_3': row[5],
+                    },
+                    'scan_time': scan_time
+                }
+
+        # 결과 정리
+        results = list(unique_results.values())
+        return jsonify(results), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/check-ssl-for-scanned-ips', methods=['POST', 'GET'])
@@ -208,10 +243,9 @@ def check_ssl_for_scanned_ips():
     try:
         # 포트 스캔 결과 가져오기
         scan_results = port_scanner.get_scan_results()  # IP, 포트 포함
-        print("Scan Results from Port Scanner:", scan_results)
-        # 새 함수로 점검 수행
-        ssl_results = check_ssl_for_scanned_ports(scan_results)
-        print("SSL Results to Return:", ssl_results)
+        ssl_results = check_ssl_for_scanned_ports(scan_results) #Result DB 저장
+
+        save_ssl_results(ssl_results)
 
         return jsonify(ssl_results), 200
     except Exception as e:

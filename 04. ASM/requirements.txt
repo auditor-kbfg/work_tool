@@ -1,0 +1,8 @@
+#pip install -r requirements.txt
+
+flask
+flask-socketio
+flask-cors
+requests
+pytz
+eventlet  # Flask-SocketIO에서 필요할 수 있음
